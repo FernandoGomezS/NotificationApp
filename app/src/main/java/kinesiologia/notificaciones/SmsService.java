@@ -1,207 +1,347 @@
 package kinesiologia.notificaciones;
 
+
 import android.app.Activity;
 import android.app.IntentService;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.content.BroadcastReceiver;
+import android.content.ContentResolver;
 import android.content.Context;
-import android.content.Intent;
+import android.content.Intent;;
 import android.content.IntentFilter;
+import android.database.Cursor;
+import android.net.ConnectivityManager;
+import android.net.NetworkInfo;
+import android.net.Uri;
+import android.os.Handler;
 import android.os.SystemClock;
 import android.support.v7.app.NotificationCompat;
 import android.telephony.SmsManager;
-import android.text.format.Time;
+import android.telephony.TelephonyManager;
 import android.util.Log;
 import android.widget.Toast;
 
-import org.apache.http.Header;
-import org.apache.http.HttpResponse;
-import org.apache.http.client.ClientProtocolException;
-import org.apache.http.client.HttpClient;
-import org.apache.http.client.methods.HttpPost;
-import org.apache.http.entity.StringEntity;
-import org.apache.http.impl.client.DefaultHttpClient;
-import org.apache.http.message.BasicHeader;
-import org.apache.http.protocol.HTTP;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
-
 import java.io.BufferedReader;
 import java.io.IOException;
-import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.io.OutputStream;
+import java.io.UnsupportedEncodingException;
+import java.net.HttpURLConnection;
+import java.net.MalformedURLException;
+import java.net.URL;
+import java.text.DateFormatSymbols;
+import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.Calendar;
 import java.util.Date;
-import java.util.UUID;
+import java.util.Timer;
+import java.util.TimerTask;
 
 /**
  * Created by Fernando on 03-06-2016.
  */
 public class SmsService extends IntentService{
 
+    String[] idMessageOk;
+    int cont;
+    int contEnv=0;
     public SmsService() {
         super("MyTestService");
     }
 
+
     @Override
     protected void onHandleIntent(Intent intent) {
 
-        Log.i("MyTestService", "Service running");
+        SimpleDateFormat sdf = new SimpleDateFormat("EEEE");
+        Date d = new Date();
+        String dayOfTheWeek = sdf.format(d);
 
-        NotificationCompat.Builder mBuilder =
-                (NotificationCompat.Builder) new NotificationCompat.Builder(this)
-                        .setSmallIcon(R.mipmap.ic_launcher)
-                        .setTicker("New notification")
-                        .setContentTitle("My notification")
-                        .setContentText(getRestFul());
+        sdf = new SimpleDateFormat("HH");
+        d = new Date();
+        int hourOfDay =  Integer.parseInt(sdf.format(d));
 
-        mBuilder.setDefaults(NotificationCompat.DEFAULT_SOUND);
+        System.out.println("dia: "+dayOfTheWeek);
+        System.out.println("HORA: "+hourOfDay);
 
-        NotificationManager mNotificationManager =
-                (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+        if( compruebaConexion(this)&& hourOfDay >= 9 && hourOfDay <= 17
+                && !dayOfTheWeek.equals(new String("domingo")) && !dayOfTheWeek.equals(new String("sábado"))){
 
-        mNotificationManager.notify(1, mBuilder.build());
+            Log.i("MyTestService", "Service Run");
+            String env="No Enviados";
+            if(getRestFul()) {
+                boolean val = true;
+                //SystemClock.sleep(7000);
+                try {
+                    while (val) {
+                        System.out.println(cont);
+                        if (idMessageOk.length == cont) {
+                            if (contEnv > 0) {
+                                postRestFul(jsonMessageOk(idMessageOk, contEnv));
+                                deleteSMS();
+                                env = "enviados";
+                            }
+                            val = false;
+                        }
+                    }
+                } catch (IOException e) {
+                    e.printStackTrace();
+                } catch (JSONException e) {
+                    e.printStackTrace();
+                }
+            }
+
+            NotificationCompat.Builder mBuilder =
+                    (NotificationCompat.Builder) new NotificationCompat.Builder(this)
+                            .setSmallIcon(R.mipmap.utalca_logo)
+                            .setTicker("New notification")
+                            .setContentTitle("My notification")
+                            .setContentText(env);
+
+            mBuilder.setDefaults(NotificationCompat.DEFAULT_SOUND);
+            NotificationManager mNotificationManager =
+                    (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+            mNotificationManager.notify(1, mBuilder.build());
+        }
+        System.out.println("Termino!!!");
+
     }
 
-    public String getRestFul( )
-    {
-        //ruta del servidor
-        // final String HTTP_RESTFUL="http://androidexample.com/media/webservice/JsonReturn.php";
-        final String HTTP_RESTFUL="http://rest-service.guides.spring.io/greeting";
+    public static boolean compruebaConexion(Context contexto) {
+        boolean connected = false;
+        ConnectivityManager connec = (ConnectivityManager) contexto.getSystemService(Context.CONNECTIVITY_SERVICE);
+        NetworkInfo[] redes = connec.getAllNetworkInfo();
+        for (int i = 0; i < redes.length; i++) {
+            if (redes[i].getState() == NetworkInfo.State.CONNECTED) {
+                connected = true;
+            }
+        }
+       /* if (connected) {
+            try {
+                HttpURLConnection urlc = (HttpURLConnection)
+                        (new URL("http://clients3.google.com/generate_204")
+                                .openConnection());
+                urlc.setRequestProperty("User-Agent", "Android");
+                urlc.setRequestProperty("Connection", "close");
+                urlc.setConnectTimeout(1500);
+                urlc.connect();
+                return (urlc.getResponseCode() == 204 &&
+                        urlc.getContentLength() == 0);
+            } catch (IOException e) {
+                return false;
+            }
+        }
+        else {
+           return false;
+        }*/
+        return connected;
 
-        HttpClient httpclient = new DefaultHttpClient();
-        HttpPost httppost = new HttpPost(HTTP_RESTFUL);
-        String strResultado="NaN";
+    }
+
+    public boolean getRestFul( ) {
+
         try {
-            //ejecuta
-            HttpResponse response = httpclient.execute(httppost);
-            //Obtiene la respuesta del servidor
-            String jsonResult = inputStreamToString(response.getEntity().getContent()).toString();
-            JSONObject object = new JSONObject(jsonResult);
-            //obtiene el status
-            strResultado="";
-            //extrae los registros
-            /*
-             JSONArray array = new JSONArray(object.getString("Android"));
-            for (int i = 0; i < array.length(); i++)
-            {
-                //recorre cada registro y concatena el resultado
-                JSONObject row = array.getJSONObject(i);
 
-               String name = row.getString("name");
-                String number = row.getString("number");
-                String date_added = row.getString("date_added");
-                strResultado += name + " " + number + " " + date_added +"\n";
-                strResultado += id + " " + content  +"\n";
+            URL url = new URL("http://192.168.1.104/notification");
+            JSONObject dato = new JSONObject();
+            dato.put("email", "admin@utalca.cl");
+            dato.put("password", "utalca");
+            String userpassword = dato.toString();
+            HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+            byte[] authEncBytes = android.util.Base64.encode(userpassword.getBytes(), android.util.Base64.DEFAULT);
+
+            conn.setRequestProperty("Authorization",  new String(authEncBytes));
+            conn.setRequestMethod("GET");
+            conn.setRequestProperty("Accept", "application/json");
+
+            conn.setConnectTimeout(15000 );
+            conn.connect();
+
+            if (conn.getResponseCode() == 200) {
+                BufferedReader br = new BufferedReader(new InputStreamReader(conn.getInputStream()));
+                if (br != null) {
+                    System.out.println("Entro!!!");
+                    String output;
+                    output = br.readLine();
+                    JSONObject json = new JSONObject(output);
+                    JSONArray array = new JSONArray(json.getString("notifications"));
+                    idMessageOk = new String[array.length()];
+                    cont = 0;
+                    for (int i = 0; i < array.length(); i++) {
+
+                        JSONObject row = array.getJSONObject(i);
+                        String id = row.getString("ID");
+                        String message = row.getString("message");
+                        String number = row.getString("number");
+                        sendSms(number,message,id);
+                        System.out.println("id :"+id+" numero :"+number+" Mensaje :"+message);
+                    }
+                }
+                conn.disconnect();
+                return true;
             }
-            */
-
-             int id = object.getInt("id");
-
-            String content= object.getString("content");
-            envioSms(Integer.toString(id),content);
-            strResultado +=  content  +"\n";
-            return strResultado;
-
-        } catch (ClientProtocolException e) {
-            strResultado = e.getMessage();
+            conn.disconnect();
+            return false;
+        } catch (MalformedURLException e) {
             e.printStackTrace();
+            Log.i( "Error in Get: ",e.toString());
         } catch (IOException e) {
-            strResultado = e.getMessage();
             e.printStackTrace();
+            Log.i( "Error in Get: ",e.toString());
         } catch (JSONException e) {
-            strResultado = e.getMessage();
             e.printStackTrace();
+            Log.i( "Error in Get: ",e.toString());
         }
-        return strResultado;
-    }
-    public String postRestFul(String name, String age) throws ClientProtocolException, IOException, JSONException
-    {
-        HttpClient httpclient = new DefaultHttpClient();
-        String uuid = UUID.randomUUID().toString();
-        //url y tipo de contenido
-        HttpPost httppost = new HttpPost("ALgo");
-        httppost.addHeader("Content-Type", "application/json");
-        //forma el JSON y tipo de contenido
-        JSONObject jsonObject = new JSONObject();
-        jsonObject.put("uuid", uuid );
-        jsonObject.put("name", name );
-        jsonObject.put("age", age );
-        StringEntity stringEntity = new StringEntity( jsonObject.toString());
-        stringEntity.setContentType( (Header) new BasicHeader(HTTP.CONTENT_TYPE, "application/json"));
-        httppost.setEntity(stringEntity);
-        //ejecuta
-        HttpResponse response = httpclient.execute(httppost);
-        //obtiene la respuesta y transforma a objeto JSON
-        String jsonResult = inputStreamToString(response.getEntity().getContent()).toString();
-        JSONObject object = new JSONObject(jsonResult);
-        Log.i("jsonResult",jsonResult);
-        if( object.getString("Result").equals("200"))
-        {
-            return "Petición POST: Exito";
-        }
-        return "Petición POST: Fracaso";
+
+        return false;
     }
 
+    public void postRestFul(JSONObject jsonMessageOk ) throws  IOException, JSONException {
 
-    /**
-     * Transforma el InputStream en un String
-     * @return StringBuilder
-     * */
-    private StringBuilder inputStreamToString(InputStream is)
-    {
-        String line = "";
-        StringBuilder stringBuilder = new StringBuilder();
-        BufferedReader rd = new BufferedReader( new InputStreamReader(is) );
-        try
-        {
-            while( (line = rd.readLine()) != null )
-            {
-                stringBuilder.append(line);
+        int restp=0;
+        do {
+            System.out.println("JSON: " + jsonMessageOk);
+            try {
+
+                URL url = new URL("http://192.168.1.104//notification");
+                JSONObject dato = new JSONObject();
+                dato.put("email", "admin@utalca.cl");
+                dato.put("password", "utalca");
+                String userpassword = dato.toString();
+                HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+                byte[] authEncBytes = android.util.Base64.encode(userpassword.getBytes(), android.util.Base64.DEFAULT);
+
+                conn.setRequestProperty("Authorization", new String(authEncBytes));
+                conn.setRequestMethod("POST");
+                conn.setRequestProperty("Content-type", "application/json");
+                conn.setRequestProperty("Accept", "application/json");
+                conn.setReadTimeout(10000 );
+                conn.setConnectTimeout(15000 );
+                conn.connect();
+
+                OutputStream os = conn.getOutputStream();
+                os.write(jsonMessageOk.toString().getBytes("UTF-8"));
+                os.flush();
+                BufferedReader br = new BufferedReader(new InputStreamReader(conn.getInputStream()));
+
+                restp=conn.getResponseCode();
+
+                if (restp == 200) {
+                    String output;
+                    System.out.println("Output from Server .... \n");
+                    while ((output = br.readLine()) != null) {
+                        System.out.println(output);
+                    }
+                }
+                conn.disconnect();
+            } catch (UnsupportedEncodingException e) {
+                e.printStackTrace();
+                Log.i( "Error in Post: ",e.toString());
+            } catch (IOException e) {
+                e.printStackTrace();
+                Log.i( "Error in Post: ",e.toString());
             }
-        }
-        catch( IOException e)
-        {
-            e.printStackTrace();
-        }
 
-        return stringBuilder;
+        }
+        while(restp != 200);
     }
 
-    private void envioSms (String numero, String mensaje){
 
-        PendingIntent sentIntent = PendingIntent.getBroadcast(getApplicationContext(), 0, new Intent("SMS_SENT"), 0);
+    private boolean sendSms (String numero, String mensaje,String id){
 
-       /* registerReceiver(new BroadcastReceiver() {
+        PendingIntent sentIntent = PendingIntent.getBroadcast(getApplicationContext(), 0, new Intent(id), 0);
+        getApplication().registerReceiver(new BroadcastReceiver() {
             @Override
             public void onReceive(Context context, Intent intent) {
                 switch (getResultCode()){
                     case Activity.RESULT_OK:
-                        Toast.makeText(getApplicationContext(), "SMS enviado", Toast.LENGTH_SHORT).show();
+                        Log.i("Mensaje enviado","Sms");
+                        idMessageOk[cont] = intent.getAction();
+                        cont++;
+                        contEnv++;
+                        getApplication().unregisterReceiver(this);
                         break;
                     case SmsManager.RESULT_ERROR_GENERIC_FAILURE:
-                        Toast.makeText(getApplicationContext(), "No se pudo enviar SMS", Toast.LENGTH_SHORT).show();
+                        Log.i(intent.getAction(),"Sms");
+                        cont++;
+                        getApplication().unregisterReceiver(this);
                         break;
                     case SmsManager.RESULT_ERROR_NO_SERVICE:
-                        Toast.makeText(getApplicationContext(), "Servicio no diponible", Toast.LENGTH_SHORT).show();
+                        Log.i("Servicio no diponible","Sms");
+                        cont++;
+                        getApplication().unregisterReceiver(this);
                         break;
                     case SmsManager.RESULT_ERROR_NULL_PDU:
-                        Toast.makeText(getApplicationContext(), "PDU (Protocol Data Unit) es NULL", Toast.LENGTH_SHORT).show();
+                        Log.i("PDU  es NULL","Sms");
+                        cont++;
+                        getApplication().unregisterReceiver(this);
                         break;
                     case SmsManager.RESULT_ERROR_RADIO_OFF:
-                        Toast.makeText(getApplicationContext(), "Failed because radio was explicitly turned off", Toast.LENGTH_SHORT).show();
+                        Log.i("Failed turned off","Sms");
+                        cont++;
+                        getApplication().unregisterReceiver(this);
                         break;
                 }
             }
-        }, new IntentFilter("SMS_SENT"));
-        */
 
+        }, new IntentFilter(id));
         SmsManager sms = SmsManager.getDefault();
         sms.sendTextMessage( numero , null, mensaje , sentIntent, null);
+        return true;
 
 
+       /* try {
+            SmsManager smsManager = SmsManager.getDefault();
+            smsManager.sendTextMessage(numero, null, mensaje, null, null);
+            Log.i("Mensaje enviado","Sms");
+            return true;
+        }
+        catch (Exception e) {
 
+            e.printStackTrace();
+            Log.i("Mensaje No enviado","sms");
+            return false;
+        }*/
+
+    }
+
+    public JSONObject jsonMessageOk (String id[], int numberMessage) throws JSONException {
+        JSONObject obj = null;
+        JSONArray jsonArray = new JSONArray();
+        for (int i = 0; i < numberMessage; i++) {
+            obj = new JSONObject();
+            try {
+                obj.put("ID", id[i]);
+
+            } catch (JSONException e) {
+                e.printStackTrace();
+            }
+            jsonArray.put(obj);
+        }
+        JSONObject finalobject = new JSONObject();
+        finalobject.put("notifications", jsonArray);
+        return finalobject;
+    }
+
+    public void deleteSMS() {
+        ContentResolver cr = getContentResolver();
+        Uri inboxUri = Uri.parse("content://sms/inbox");
+        Cursor c = getApplicationContext().getContentResolver().query(Uri.parse("content://sms/"), null, null, null,null);
+        try {
+            while (c.moveToNext()) {
+                int id = c.getInt(0);
+                getApplicationContext().getContentResolver().delete(Uri.parse("content://sms/" + id), null, null);
+            }
+
+        }catch(Exception e){
+            Log.e(this.toString(),"Error deleting sms",e);
+        }finally {
+            c.close();
+        }
     }
 }
 

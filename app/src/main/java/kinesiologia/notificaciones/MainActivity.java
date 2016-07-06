@@ -4,18 +4,26 @@ package kinesiologia.notificaciones;
 import android.app.AlarmManager;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
+import android.content.ContentResolver;
 import android.content.Context;
 import android.content.Intent;
+import android.database.Cursor;
+import android.net.Uri;
 import android.os.SystemClock;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
+import android.view.View;
+import android.view.View.OnClickListener;
 
 import android.util.Log;
+import android.widget.Button;
 
 
-public class MainActivity extends AppCompatActivity {
+public class MainActivity extends AppCompatActivity{
 
     private NotificationManager notificationManager;
+
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -33,9 +41,13 @@ public class MainActivity extends AppCompatActivity {
 
         // tipo alarma, primer lanzamiento, intervalo lanzamientos, Intent a ejecutar
         alarmManager.setInexactRepeating(AlarmManager.ELAPSED_REALTIME_WAKEUP, SystemClock.elapsedRealtime()+interval*60*1000, interval*60*1000, sender);
-        Log.i("MyTestService", "End Test");
+
 
         finish();
+
     }
 
+
+
 }
+
