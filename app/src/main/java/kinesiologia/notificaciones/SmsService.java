@@ -49,6 +49,7 @@ public class SmsService extends IntentService{
     String[] idMessageOk;
     int cont;
     int contEnv=0;
+
     public SmsService() {
         super("MyTestService");
     }
@@ -56,6 +57,8 @@ public class SmsService extends IntentService{
 
     @Override
     protected void onHandleIntent(Intent intent) {
+
+        Log.i("MyTestService1 ", "dentro");
 
         SimpleDateFormat sdf = new SimpleDateFormat("EEEE");
         Date d = new Date();
@@ -68,6 +71,51 @@ public class SmsService extends IntentService{
         System.out.println("dia: "+dayOfTheWeek);
         System.out.println("HORA: "+hourOfDay);
 
+
+/*
+        if( compruebaConexion(this)&& hourOfDay >= 6 && hourOfDay <= 7
+                && !dayOfTheWeek.equals(new String("domingo")) && !dayOfTheWeek.equals(new String("sábado")))
+        {
+             try {
+            int restp=0;
+            URL url = new URL("http://172.16.41.183/notificationautomatic");
+            JSONObject dato = new JSONObject();
+            dato.put("email", "admin@utalca.cl");
+            dato.put("password", "utalca");
+            String userpassword = dato.toString();
+            HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+            byte[] authEncBytes = android.util.Base64.encode(userpassword.getBytes(), android.util.Base64.DEFAULT);
+
+            conn.setRequestProperty("Authorization", new String(authEncBytes));
+            conn.setRequestMethod("POST");
+            conn.setRequestProperty("Content-type", "application/json");
+            conn.setRequestProperty("Accept", "application/json");
+            conn.setReadTimeout(10000 );
+            conn.setConnectTimeout(15000 );
+            conn.connect();
+
+            OutputStream os = conn.getOutputStream();
+            os.write(null);
+            os.flush();
+            BufferedReader br = new BufferedReader(new InputStreamReader(conn.getInputStream()));
+
+            restp=conn.getResponseCode();
+            conn.disconnect();
+        } catch (UnsupportedEncodingException e) {
+            e.printStackTrace();
+            Log.i( "Error in Post: ",e.toString());
+        } catch (IOException e) {
+            e.printStackTrace();
+            Log.i( "Error in Post: ",e.toString());
+        } catch (JSONException e) {
+            e.printStackTrace();
+        }
+
+
+
+        }
+*/
+
         if( compruebaConexion(this)&& hourOfDay >= 9 && hourOfDay <= 17
                 && !dayOfTheWeek.equals(new String("domingo")) && !dayOfTheWeek.equals(new String("sábado"))){
 
@@ -78,7 +126,7 @@ public class SmsService extends IntentService{
                 //SystemClock.sleep(7000);
                 try {
                     while (val) {
-                        System.out.println(cont);
+
                         if (idMessageOk.length == cont) {
                             if (contEnv > 0) {
                                 postRestFul(jsonMessageOk(idMessageOk, contEnv));
@@ -120,24 +168,6 @@ public class SmsService extends IntentService{
                 connected = true;
             }
         }
-       /* if (connected) {
-            try {
-                HttpURLConnection urlc = (HttpURLConnection)
-                        (new URL("http://clients3.google.com/generate_204")
-                                .openConnection());
-                urlc.setRequestProperty("User-Agent", "Android");
-                urlc.setRequestProperty("Connection", "close");
-                urlc.setConnectTimeout(1500);
-                urlc.connect();
-                return (urlc.getResponseCode() == 204 &&
-                        urlc.getContentLength() == 0);
-            } catch (IOException e) {
-                return false;
-            }
-        }
-        else {
-           return false;
-        }*/
         return connected;
 
     }
@@ -146,7 +176,7 @@ public class SmsService extends IntentService{
 
         try {
 
-            URL url = new URL("http://192.168.1.104/notification");
+            URL url = new URL("http://192.168.1.105/notification");
             JSONObject dato = new JSONObject();
             dato.put("email", "admin@utalca.cl");
             dato.put("password", "utalca");
@@ -202,52 +232,52 @@ public class SmsService extends IntentService{
 
     public void postRestFul(JSONObject jsonMessageOk ) throws  IOException, JSONException {
 
+
         int restp=0;
-        do {
-            System.out.println("JSON: " + jsonMessageOk);
-            try {
+        System.out.println("JSON: " + jsonMessageOk);
+        try {
 
-                URL url = new URL("http://192.168.1.104//notification");
-                JSONObject dato = new JSONObject();
-                dato.put("email", "admin@utalca.cl");
-                dato.put("password", "utalca");
-                String userpassword = dato.toString();
-                HttpURLConnection conn = (HttpURLConnection) url.openConnection();
-                byte[] authEncBytes = android.util.Base64.encode(userpassword.getBytes(), android.util.Base64.DEFAULT);
+            URL url = new URL("http://192.168.1.105/notification");
+            JSONObject dato = new JSONObject();
+            dato.put("email", "admin@utalca.cl");
+            dato.put("password", "utalca");
+            String userpassword = dato.toString();
+            HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+            byte[] authEncBytes = android.util.Base64.encode(userpassword.getBytes(), android.util.Base64.DEFAULT);
 
-                conn.setRequestProperty("Authorization", new String(authEncBytes));
-                conn.setRequestMethod("POST");
-                conn.setRequestProperty("Content-type", "application/json");
-                conn.setRequestProperty("Accept", "application/json");
-                conn.setReadTimeout(10000 );
-                conn.setConnectTimeout(15000 );
-                conn.connect();
+            conn.setRequestProperty("Authorization", new String(authEncBytes));
+            conn.setRequestMethod("POST");
+            conn.setRequestProperty("Content-type", "application/json");
+            conn.setRequestProperty("Accept", "application/json");
+            conn.setReadTimeout(10000 );
+            conn.setConnectTimeout(15000 );
+            conn.connect();
 
-                OutputStream os = conn.getOutputStream();
-                os.write(jsonMessageOk.toString().getBytes("UTF-8"));
-                os.flush();
-                BufferedReader br = new BufferedReader(new InputStreamReader(conn.getInputStream()));
+            OutputStream os = conn.getOutputStream();
+            os.write(jsonMessageOk.toString().getBytes("UTF-8"));
+            os.flush();
+            BufferedReader br = new BufferedReader(new InputStreamReader(conn.getInputStream()));
 
-                restp=conn.getResponseCode();
+            restp=conn.getResponseCode();
 
-                if (restp == 200) {
-                    String output;
-                    System.out.println("Output from Server .... \n");
-                    while ((output = br.readLine()) != null) {
-                        System.out.println(output);
-                    }
+            if (restp == 200) {
+                String output;
+                System.out.println("Output from Server .... \n");
+                while ((output = br.readLine()) != null) {
+                    System.out.println(output);
                 }
-                conn.disconnect();
-            } catch (UnsupportedEncodingException e) {
-                e.printStackTrace();
-                Log.i( "Error in Post: ",e.toString());
-            } catch (IOException e) {
-                e.printStackTrace();
-                Log.i( "Error in Post: ",e.toString());
             }
-
+            conn.disconnect();
+        } catch (UnsupportedEncodingException e) {
+            e.printStackTrace();
+            Log.i( "Error in Post: ",e.toString());
+        } catch (IOException e) {
+            e.printStackTrace();
+            Log.i( "Error in Post: ",e.toString());
         }
-        while(restp != 200);
+
+
+
     }
 
 
@@ -266,7 +296,7 @@ public class SmsService extends IntentService{
                         getApplication().unregisterReceiver(this);
                         break;
                     case SmsManager.RESULT_ERROR_GENERIC_FAILURE:
-                        Log.i(intent.getAction(),"Sms");
+                        Log.i("ERROR","Sms");
                         cont++;
                         getApplication().unregisterReceiver(this);
                         break;
@@ -323,7 +353,7 @@ public class SmsService extends IntentService{
             jsonArray.put(obj);
         }
         JSONObject finalobject = new JSONObject();
-        finalobject.put("notifications", jsonArray);
+        finalobject.put("Sent", jsonArray);
         return finalobject;
     }
 
